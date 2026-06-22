@@ -5,42 +5,36 @@ import (
 	"net"
 )
 
-func handleClient(conn net.Conn){
+func handleClient(conn net.Conn) {
+	defer conn.Close()
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)
-	if err != nil{
-		fmt.Println("Error reading: ", err)
+	if err != nil {
+		fmt.Println("Error reading bytes")
 	}
-	fmt.Print("Data Received: %s\n", buf[:n])
+	fmt.Printf("Received: %s  from Client Address %s\n\n", buf[:n], conn.RemoteAddr())
 
-	conn.Write([]byte("Hello from Go Server"))
+	//Write back to go server
+	conn.Write([]byte("Hello from GO server"))
+
 }
 func main() {
+
 	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
-		fmt.Println("Error listening:", err)
-		return
+		fmt.Println("Error listening port:", err)
 	}
 	fmt.Println("Server listening on port 8080")
 	defer listener.Close()
-	for i := 0; i < 3; i++ {
+
+	for i := 0; i < 5; i++ {
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println("Error Accepting Connection:", err)
-			return
+			fmt.Println("Error accepting client:", err)
 		}
-		fmt.Printf("Client Connected: %s\n", conn.RemoteAddr())
-		defer conn.Close()
+		fmt.Println("Client connected:", conn.RemoteAddr())
 
-		buf := make([]byte, 1024)
-		n, err := conn.Read(buf)
-		if err != nil {
-			fmt.Println("Error reading Client")
-			return
-		}
-		fmt.Printf("Data received: %s\n", buf[:n])
+		go handleClient(conn)
 
-		conn.Write([]byte("Hello from GO server"))
-		conn.Close()
 	}
 }
