@@ -6,20 +6,20 @@ import (
 	"net"
 )
 
-func handleClient(conn net.Conn) {
-	defer conn.Close()
-	addr := conn.RemoteAddr().String()
-	fmt.Println("Client Connected: ", addr)
+func handleClient(conn net.Conn, hub *Hub) {
+	hub.register <- conn
+	defer func(){
+		hub.unregister <- conn
+	}()
+	
 	reader := bufio.NewReader(conn)
 	for {
 		message, err := reader.ReadString('\n')
 		if err != nil {
-			fmt.Println("Client disconnected: ", addr)
+			fmt.Println("Error: ",err)
 			return
 		}
-		fmt.Printf("%s: %s\n", addr, message)
-
-		conn.Write([]byte("Echo: " + message))
+		hub.broadcast <- message	
 	}
 }
 
@@ -31,10 +31,10 @@ type Hub struct{
 }
 func newHub() *Hub{
 	return &Hub{
-		clients make(map[net.Conn]bool),
-		broadcast make(chan string)
-		register make(chan net.Conn)
-		unregister make(chan net.Conn)
+		clients: make(map[net.Conn]bool),
+		broadcast: make(chan string),
+		register: make(chan net.Conn),
+		unregister: make(chan net.Conn),
 	}
 }
 
@@ -51,9 +51,10 @@ func (h *Hub) run(){
 				conn.Close()
 				fmt.Println("Client removed. Total: ", len(h.clients))
 			}
-		case msg := <-h.broadcast:
+		case message := <-h.broadcast:
 			for conn := range h.clients{
-				_, err := conn.Write([]byte(msg))
+				_, err := conn.Write([]byte(message))
+				fmt.Println("Echo: ", message)
 				if err != nil{
 					//Broken connection
 					//dont remove connection while inside range, it would give undefined behaviour. instead use unregister and let next select cmd do the rest of work
@@ -74,14 +75,17 @@ func main() {
 		fmt.Println("Error starting the server:", err)
 		return
 	}
-	fmt.Println("Server running on port 8080")
 	defer listener.Close()
+
+	hub := newHub()
+	go hub.run()
+	fmt.Println("Chat server on :8080")
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			fmt.Println("Error Accepting: ", err)
 			continue
 		}
-		go handleClient(conn)
+		go handleClient(conn, hub)
 	}	
 }
