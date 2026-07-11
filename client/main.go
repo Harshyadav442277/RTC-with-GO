@@ -27,6 +27,15 @@ func main() {
 		}
 	}()
 	scanner := bufio.NewScanner(os.Stdin)
+	
+	var name string
+	if scanner.Scan(){
+		name = scanner.Text()
+	}
+
+	conn.Write([]byte(name))
+	fmt.Println("Now, you can talk")
+
 	for scanner.Scan() {
 		text := scanner.Text()
 		conn.Write([]byte(text + "\n"))
