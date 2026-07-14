@@ -23,19 +23,10 @@ func main() {
 				fmt.Println("Connection refused: ", err)
 				os.Exit(0)
 			}
-			fmt.Println("Server ---> ", message)
+			fmt.Println(message)
 		}
 	}()
 	scanner := bufio.NewScanner(os.Stdin)
-	
-	var name string
-	if scanner.Scan(){
-		name = scanner.Text()
-	}
-
-	conn.Write([]byte(name))
-	fmt.Println("Now, you can talk")
-
 	for scanner.Scan() {
 		text := scanner.Text()
 		conn.Write([]byte(text + "\n"))
