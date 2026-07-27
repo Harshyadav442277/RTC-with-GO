@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"strings"
 )
 
 func main() {
@@ -73,12 +74,18 @@ func handleClient(conn net.Conn, hub *Hub) {
 		hub.unregister <- conn
 	}()
 	reader := bufio.NewReader(conn)
-	conn.Write([]byte("Enter Name: "))
+	conn.Write([]byte("Enter Name: \n"))
 	name, err := reader.ReadString('\n')
-	if err != nil{
+	if err != nil {
 		fmt.Println("Name field error: ", err)
 		return
 	}
+	name = strings.TrimSpace(name)
+	if name == ""{
+		fmt.Println("Username cannot be empty")
+		return
+	}
+	conn.Write([]byte("Success! Username entered\n"))
 
 	for {
 		message, err := reader.ReadString('\n')
@@ -86,7 +93,11 @@ func handleClient(conn net.Conn, hub *Hub) {
 			fmt.Println("Client disconnected: ", err)
 			return
 		}
-		formatted := "Username: " + name + " ---> " + message + "\n"
-		hub.broadcast <- formatted	
+		formatted := "[" + name + "]" + " ---> " + message
+		hub.broadcast <- formatted
 	}
+	defer func(){
+		hub.broadcast <- "[System]" + name + "left the chat\n"
+		hub.unregister <- conn
+	}()
 }
